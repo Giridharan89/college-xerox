@@ -1,0 +1,195 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Main container */
+.container {
+  max-width: 650px;
+  margin: 30px auto;
+  padding: 16px;
+}
+
+.wide {
+  max-width: 1000px;
+}
+
+/* Main card */
+.card {
+  background: white;
+  padding: 24px;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Headings */
+h1 {
+  margin-top: 0;
+  font-size: 30px;
+}
+
+h2 {
+  margin-top: 28px;
+}
+
+h3 {
+  margin-top: 0;
+}
+
+/* Form labels */
+label {
+  display: block;
+  margin-top: 15px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+/* Inputs */
+input,
+select,
+textarea,
+button {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+}
+
+/* Make textarea resize nicely */
+textarea {
+  resize: vertical;
+}
+
+/* Buttons */
+button {
+  margin-top: 18px;
+  background: #111827;
+  color: white;
+  border: 0;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Small buttons */
+.small {
+  width: auto;
+  margin: 4px;
+  padding: 8px 10px;
+  min-height: 38px;
+}
+
+/* Muted text */
+.muted {
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Total amount */
+.total {
+  margin-top: 18px;
+  padding: 14px;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 18px;
+}
+
+/* Success and error messages */
+.success,
+.error {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Admin order */
+.order {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.order select {
+  margin-top: 10px;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+
+  body {
+    background: #f9fafb;
+  }
+
+  .container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 10px;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 10px;
+  }
+
+  h1 {
+    font-size: 25px;
+  }
+
+  h2 {
+    font-size: 21px;
+  }
+
+  h3 {
+    font-size: 18px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+    padding: 13px;
+  }
+
+  .total {
+    font-size: 17px;
+  }
+
+  .order {
+    padding: 14px;
+  }
+
+  .small {
+    width: 100%;
+    margin: 5px 0;
+  }
+}

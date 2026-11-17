@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>College Xerox</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main class="container">
+    <div class="card">
+      <h1>College Xerox</h1>
+
+      <p class="muted">
+        Upload your documents. Pay online. Collect the xerox from me.
+      </p>
+
+      <form id="orderForm">
+        <label for="studentName">Student Name</label>
+        <input id="studentName" name="studentName" required>
+
+        <label for="rollNo">Roll Number</label>
+        <input id="rollNo" name="rollNo" required>
+
+        <label for="phone">Phone Number</label>
+        <input id="phone" name="phone" inputmode="numeric">
+
+        <label for="files">
+          Files (PDF/JPG/PNG, max 5 files, 15 MB each)
+        </label>
+        <input
+          id="files"
+          name="files"
+          type="file"
+          multiple
+          accept=".pdf,.jpg,.jpeg,.png"
+          required
+        >
+
+        <label for="printType">Print Type</label>
+        <select id="printType" name="printType">
+          <option value="bw">Black & White — ₹2/page</option>
+          <option value="color">Color — ₹10/page</option>
+        </select>
+
+        <label for="pages">Number of Pages</label>
+        <input
+          id="pages"
+          name="pages"
+          type="number"
+          min="1"
+          value="1"
+          required
+        >
+
+        <label for="copies">Copies</label>
+        <input
+          id="copies"
+          name="copies"
+          type="number"
+          min="1"
+          value="1"
+          required
+        >
+
+        <label for="description">Description / Instructions</label>
+        <textarea
+          id="description"
+          name="description"
+          rows="4"
+          placeholder="Example: Double side, staple, 2 copies..."
+        ></textarea>
+
+        <div class="total">
+          Estimated total:
+          <strong id="total">₹2</strong>
+        </div>
+
+        <button type="submit" id="payBtn">
+          Upload & Pay
+        </button>
+      </form>
+
+      <div id="message"></div>
+      <hr>
+
+<h2>Track Your Order</h2>
+
+<p class="muted">
+  Enter your Order ID to check your payment and print status.
+</p>
+
+<div>
+  <input
+    id="trackOrderId"
+    type="number"
+    min="1"
+    placeholder="Enter Order ID"
+  >
+
+  <button type="button" onclick="trackOrder()">
+    Check Status
+  </button>
+</div>
+
+<div id="trackingResult"></div>
+    </div>
+  </main>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <script>
+    const form = document.getElementById("orderForm");
+    const pagesInput = document.getElementById("pages");
+    const copiesInput = document.getElementById("copies");
+    const printTypeInput = document.getElementById("printType");
+    const total = document.getElementById("total");
+    const message = document.getElementById("message");
+    const payBtn = document.getElementById("payBtn");
+
+    function updateTotal() {
+      const rate = printTypeInput.value === "color" ? 10 : 2;
+      const pages = Number(pagesInput.value || 0);
+      const copies = Number(copiesInput.value || 0);
+
+      total.textContent = "₹" + (rate * pages * copies);
+    }
+
+    pagesInput.addEventListener("input", updateTotal);
+    copiesInput.addEventListener("input", updateTotal);
+    printTypeInput.addEventListener("change", updateTotal);
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      message.innerHTML =
+        "<p>Uploading files and creating payment...</p>";
+
+      payBtn.disabled = true;
+
+      try {
+        const formData = new FormData(form);
+
+        console.log("Sending order request to:", window.location.origin);
+        console.log("Files selected:", formData.getAll("files").length);
+
+        const response = await fetch(
+          window.location.origin + "/api/orders",
+          {
+            method: "POST",
+            body: formData
+          }
+        );
+
+        const responseText = await response.text();
+
+        let data;
+
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          throw new Error(
+            "Server returned an invalid response: " +
+            responseText.substring(0, 200)
+          );
+        }
+
+        console.log("Server response:", data);
+
+        if (!response.ok) {
+          throw new Error(data.error || "Order creation failed.");
+        }
+
+        const options = {
+          key: data.keyId,
+          amount: data.amountPaise,
+          currency: data.currency,
+          name: "College Xerox",
+          description: "Xerox / Print Order #" + data.localOrderId,
+          order_id: data.razorpayOrderId,
+
+          handler: async function (payment) {
+            try {
+              const verifyResponse = await fetch(
+                window.location.origin + "/api/payment/verify",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                    localOrderId: data.localOrderId,
+                    razorpay_order_id: payment.razorpay_order_id,
+                    razorpay_payment_id: payment.razorpay_payment_id,
+                    razorpay_signature: payment.razorpay_signature
+                  })
+                }
+              );
+
+              const verifyData = await verifyResponse.json();
+
+              if (!verifyResponse.ok) {
+                throw new Error(
+                  verifyData.error || "Payment verification failed."
+                );
+              }
+
+              message.innerHTML =
+                "<div class='success'>" +
+                "Payment successful! Your Order ID is <b>#" +
+                data.localOrderId +
+                "</b>. Save this number." +
+                "</div>";
+
+              form.reset();
+              updateTotal();
+              payBtn.disabled = false;
+            } catch (error) {
+              message.innerHTML =
+                "<div class='error'>" +
+                error.message +
+                "</div>";
+
+              payBtn.disabled = false;
+            }
+          },
+
+          prefill: {
+            name: document.getElementById("studentName").value,
+            contact: document.getElementById("phone").value
+          },
+
+          theme: {
+            color: "#111827"
+          },
+
+          modal: {
+            ondismiss: function () {
+              payBtn.disabled = false;
+            }
+          }
+        };
+
+        if (!window.Razorpay) {
+          throw new Error("Razorpay checkout failed to load.");
+        }
+
+        const razorpayCheckout = new Razorpay(options);
+        razorpayCheckout.open();
+
+      } catch (error) {
+        console.error("FRONTEND ORDER ERROR:", error);
+
+        message.innerHTML =
+          "<div class='error'>" +
+          error.message +
+          "</div>";
+
+        payBtn.disabled = false;
+      }
+    });
+
+    updateTotal();
+    async function trackOrder() {
+  const orderId = document.getElementById("trackOrderId").value;
+  const result = document.getElementById("trackingResult");
+
+  if (!orderId) {
+    result.innerHTML =
+      "<div class='error'>Please enter your Order ID.</div>";
+    return;
+  }
+
+  result.innerHTML = "Checking order...";
+
+  try {
+    const response = await fetch("/api/order/" + orderId);
+    const data = await response.json();
+
+    if (!response.ok) {
+      result.innerHTML =
+        "<div class='error'>" +
+        (data.error || "Order not found.") +
+        "</div>";
+      return;
+    }
+
+    const paymentStatus =
+      data.payment_status === "paid"
+        ? "PAID ✅"
+        : data.payment_status.toUpperCase();
+
+    const statusText = {
+      pending: "Pending ⏳",
+      printing: "Printing 🖨️",
+      ready: "Ready ✅",
+      delivered: "Delivered 🎉",
+      cancelled: "Cancelled ❌"
+    };
+
+    result.innerHTML = `
+      <div class="card">
+        <h3>Order #${data.id}</h3>
+
+        <p>
+          <b>Payment:</b> ${paymentStatus}
+        </p>
+
+        <p>
+          <b>Order Status:</b>
+          ${statusText[data.order_status] || data.order_status}
+        </p>
+
+        <p>
+          <b>Print Type:</b>
+          ${data.print_type === "color" ? "Color" : "B/W"}
+        </p>
+
+        <p>
+          <b>Pages:</b> ${data.pages}
+        </p>
+
+        <p>
+          <b>Copies:</b> ${data.copies}
+        </p>
+
+        <p>
+          <b>Amount:</b>
+          ₹${(data.amount_paise / 100).toFixed(2)}
+        </p>
+      </div>
+    `;
+
+  } catch (error) {
+    console.error("TRACK ORDER ERROR:", error);
+
+    result.innerHTML =
+      "<div class='error'>Could not check order status.</div>";
+  }
+}
+  </script>
+</body>
+</html>

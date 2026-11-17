@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin - College Xerox</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container wide">
+    <div class="card">
+      <h1>Admin Dashboard</h1>
+      <p class="muted">Only you should know this admin key.</p>
+
+      <input id="adminKey" type="password" placeholder="Admin key">
+      <button onclick="loadOrders()">Open Orders</button>
+      <div id="orders"></div>
+    </div>
+  </main>
+
+<script>
+async function loadOrders() {
+  const key = document.getElementById("adminKey").value;
+  localStorage.setItem("xeroxAdminKey", key);
+  const box = document.getElementById("orders");
+  box.innerHTML = "Loading...";
+
+  const r = await fetch("/api/admin/orders", {
+    headers: { "x-admin-key": key }
+  });
+  const data = await r.json();
+
+  if (!r.ok) {
+    box.innerHTML = "<div class='error'>" + (data.error || "Unauthorized") + "</div>";
+    return;
+  }
+
+  box.innerHTML = data.map(order => `
+    <div class="order">
+      <h3>Order #${order.id} — ${escapeHtml(order.student_name)}</h3>
+      <p><b>Roll:</b> ${escapeHtml(order.roll_no)} |
+         <b>Pages:</b> ${order.pages} |
+         <b>Copies:</b> ${order.copies} |
+         <b>Type:</b> ${order.print_type === "color" ? "Color" : "B/W"} |
+         <b>Amount:</b> ₹${(order.amount_paise / 100).toFixed(2)}</p>
+      <p><b>Instructions:</b> ${escapeHtml(order.description || "-")}</p>
+      <p><b>Payment:</b> ${order.payment_status} |
+         <b>Status:</b> ${order.order_status}</p>
+
+      <div>
+        ${order.files.map(f =>
+          `<button class="small" onclick="downloadFile(${f.id})">${escapeHtml(f.original_name)}</button>`
+        ).join(" ")}
+      </div>
+
+      <select onchange="setStatus(${order.id}, this.value)">
+        ${["pending","printing","ready","delivered","cancelled"].map(s =>
+          `<option value="${s}" ${s === order.order_status ? "selected" : ""}>${s}</option>`
+        ).join("")}
+      </select>
+    </div>
+  `).join("");
+}
+async function downloadFile(fileId) {
+  const key = document.getElementById("adminKey").value || localStorage.getItem("xeroxAdminKey");
+
+  const r = await fetch("/api/admin/files/" + fileId + "/download", {
+    headers: {
+      "x-admin-key": key
+    }
+  });
+
+  const data = await r.json();
+
+  if (!r.ok) {
+    return alert(data.error || "Download failed");
+  }
+
+  window.open(data.url, "_blank");
+}
+
+async function setStatus(id, status) {
+  const key = document.getElementById("adminKey").value || localStorage.getItem("xeroxAdminKey");
+  const r = await fetch("/api/admin/orders/" + id + "/status", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-key": key
+    },
+    body: JSON.stringify({ status })
+  });
+  if (!r.ok) alert("Could not update status.");
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+  }[c]));
+}
+</script>
+</body>
+</html>
